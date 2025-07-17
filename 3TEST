@@ -1,0 +1,382 @@
+-- Pet Mutation Checker & Forcer (FIXED WITH ERROR HANDLING)
+-- This version will show you exactly what's going wrong
+
+-- Mutation enum mapping (from the decompiled code)
+local MutationEnums = {
+    ['a'] = 'Shocked',
+    ['b'] = 'Golden', 
+    ['c'] = 'Rainbow',
+    ['d'] = 'Shiny',
+    ['e'] = 'Windy',
+    ['f'] = 'Frozen',
+    ['g'] = 'Inverted',
+    ['h'] = 'Rideable',
+    ['i'] = 'Mega',
+    ['j'] = 'Tiny',
+    ['k'] = 'IronSkin',
+    ['l'] = 'Radiant',
+    ['m'] = 'Normal',
+    ['n'] = 'Ascended'
+}
+
+-- Reverse mapping for forcing mutations
+local MutationToEnum = {
+    ['Shocked'] = 'a',
+    ['Golden'] = 'b',
+    ['Rainbow'] = 'c',
+    ['Shiny'] = 'd',
+    ['Windy'] = 'e',
+    ['Frozen'] = 'f',
+    ['Inverted'] = 'g',
+    ['Rideable'] = 'h',
+    ['Mega'] = 'i',
+    ['Tiny'] = 'j',
+    ['IronSkin'] = 'k',
+    ['Radiant'] = 'l',
+    ['Normal'] = 'm',
+    ['Ascended'] = 'n'
+}
+
+-- Function to safely get the raccoon with detailed error reporting
+local function GetRaccoon()
+    print("🔍 Attempting to find raccoon...")
+    
+    -- Check each step of the path
+    local success, workspace_check = pcall(function()
+        return workspace
+    end)
+    
+    if not success then
+        print("❌ ERROR: Cannot access workspace!")
+        return nil
+    end
+    print("✅ Workspace accessible")
+    
+    local interaction = workspace:FindFirstChild("Interaction")
+    if not interaction then
+        print("❌ ERROR: 'Interaction' not found in workspace!")
+        print("🔍 Available children in workspace:")
+        for i, child in pairs(workspace:GetChildren()) do
+            print("  -", child.Name)
+        end
+        return nil
+    end
+    print("✅ Found Interaction")
+    
+    local updateItems = interaction:FindFirstChild("UpdateItems")
+    if not updateItems then
+        print("❌ ERROR: 'UpdateItems' not found in Interaction!")
+        print("🔍 Available children in Interaction:")
+        for i, child in pairs(interaction:GetChildren()) do
+            print("  -", child.Name)
+        end
+        return nil
+    end
+    print("✅ Found UpdateItems")
+    
+    local newPetStand = updateItems:FindFirstChild("NewPetStand")
+    if not newPetStand then
+        print("❌ ERROR: 'NewPetStand' not found in UpdateItems!")
+        print("🔍 Available children in UpdateItems:")
+        for i, child in pairs(updateItems:GetChildren()) do
+            print("  -", child.Name)
+        end
+        return nil
+    end
+    print("✅ Found NewPetStand")
+    
+    local petMutationMachine = newPetStand:FindFirstChild("PetMutationMachine")
+    if not petMutationMachine then
+        print("❌ ERROR: 'PetMutationMachine' not found in NewPetStand!")
+        print("🔍 Available children in NewPetStand:")
+        for i, child in pairs(newPetStand:GetChildren()) do
+            print("  -", child.Name)
+        end
+        return nil
+    end
+    print("✅ Found PetMutationMachine")
+    
+    local petModelLocation = petMutationMachine:FindFirstChild("PetModelLocation")
+    if not petModelLocation then
+        print("❌ ERROR: 'PetModelLocation' not found in PetMutationMachine!")
+        print("🔍 Available children in PetMutationMachine:")
+        for i, child in pairs(petMutationMachine:GetChildren()) do
+            print("  -", child.Name)
+        end
+        return nil
+    end
+    print("✅ Found PetModelLocation")
+    
+    local raccoon = petModelLocation:FindFirstChild("Raccoon")
+    if not raccoon then
+        print("❌ ERROR: 'Raccoon' not found in PetModelLocation!")
+        print("🔍 Available children in PetModelLocation:")
+        for i, child in pairs(petModelLocation:GetChildren()) do
+            print("  -", child.Name)
+        end
+        return nil
+    end
+    print("✅ Found Raccoon!")
+    
+    return raccoon
+end
+
+-- Function to safely get remote events
+local function GetRemoteEvent(path)
+    local success, result = pcall(function()
+        local parts = string.split(path, ".")
+        local current = game:GetService("ReplicatedStorage")
+        
+        for i = 1, #parts do
+            current = current:FindFirstChild(parts[i])
+            if not current then
+                return nil
+            end
+        end
+        
+        return current
+    end)
+    
+    if success and result and result:IsA("RemoteEvent") then
+        return result
+    end
+    return nil
+end
+
+-- Function to check what mutation your raccoon will get
+function CheckRaccoonMutation()
+    print("🔍 Checking raccoon mutation...")
+    print("=" .. string.rep("=", 40))
+    
+    local raccoon = GetRaccoon()
+    if not raccoon then
+        return
+    end
+    
+    print("🦝 Raccoon found! Checking for mutation data...")
+    
+    -- Check all attributes for mutation data
+    local foundMutation = false
+    local success, attributes = pcall(function()
+        return raccoon:GetAttributes()
+    end)
+    
+    if success and attributes then
+        if next(attributes) then
+            print("📋 Raccoon attributes:")
+            for attribute, value in pairs(attributes) do
+                print("  -", attribute, "=", tostring(value))
+                
+                -- Check if it's a mutation enum
+                if MutationEnums[tostring(value)] then
+                    print("✅ MUTATION FOUND:", MutationEnums[tostring(value)])
+                    foundMutation = true
+                end
+                
+                -- Check if attribute name suggests mutation
+                if string.find(string.lower(attribute), "mutation") then
+                    print("🎯 Mutation attribute found:", attribute, "=", tostring(value))
+                    if MutationEnums[tostring(value)] then
+                        print("✅ MUTATION TYPE:", MutationEnums[tostring(value)])
+                    end
+                    foundMutation = true
+                end
+            end
+        else
+            print("📋 No attributes found on raccoon")
+        end
+    else
+        print("❌ ERROR: Cannot read raccoon attributes")
+    end
+    
+    if not foundMutation then
+        print("❓ No mutation data found in attributes. Checking children...")
+        
+        -- Check for StringValues or other objects that might hold mutation data
+        local success2, descendants = pcall(function()
+            return raccoon:GetDescendants()
+        end)
+        
+        if success2 and descendants then
+            for i, v in pairs(descendants) do
+                if v:IsA("StringValue") or v:IsA("ObjectValue") or v:IsA("IntValue") then
+                    print("📁", v.Name, "=", tostring(v.Value))
+                    if MutationEnums[tostring(v.Value)] then
+                        print("✅ MUTATION FOUND:", MutationEnums[tostring(v.Value)])
+                        foundMutation = true
+                    end
+                end
+            end
+        else
+            print("❌ ERROR: Cannot read raccoon descendants")
+        end
+    end
+    
+    if not foundMutation then
+        print("❓ No mutation data found anywhere")
+    end
+    
+    print("=" .. string.rep("=", 40))
+end
+
+-- Function to force Rainbow mutation
+function ForceRainbowMutation()
+    print("🌈 Attempting to force Rainbow mutation...")
+    print("=" .. string.rep("=", 40))
+    
+    local raccoon = GetRaccoon()
+    if not raccoon then
+        return
+    end
+    
+    -- Try different methods to force Rainbow mutation (enum 'c')
+    local rainbowEnum = MutationToEnum['Rainbow'] -- 'c'
+    print("🎯 Using Rainbow enum:", rainbowEnum)
+    
+    -- Method 1: Direct RemoteEvent call
+    print("🔄 Method 1: Using PetMutationHandler...")
+    local remote1 = GetRemoteEvent("GameEvents.PetMutationHandler")
+    if remote1 then
+        local success = pcall(function()
+            remote1:FireServer(rainbowEnum)
+        end)
+        print(success and "✅ Success" or "❌ Failed")
+    else
+        print("❌ Remote not found")
+    end
+    
+    -- Method 2: With raccoon parameter
+    print("🔄 Method 2: Using PetMutationHandler with raccoon...")
+    if remote1 then
+        local success = pcall(function()
+            remote1:FireServer(raccoon, rainbowEnum)
+        end)
+        print(success and "✅ Success" or "❌ Failed")
+    else
+        print("❌ Remote not found")
+    end
+    
+    -- Method 3: Using machine service
+    print("🔄 Method 3: Using PetMutationMachineService_RE...")
+    local remote2 = GetRemoteEvent("GameEvents.PetMutationMachineService_RE")
+    if remote2 then
+        local success = pcall(function()
+            remote2:FireServer(rainbowEnum)
+        end)
+        print(success and "✅ Success" or "❌ Failed")
+    else
+        print("❌ Remote not found")
+    end
+    
+    -- Method 4: With start parameter
+    print("🔄 Method 4: Using machine service with parameters...")
+    if remote2 then
+        local success = pcall(function()
+            remote2:FireServer("start", rainbowEnum)
+        end)
+        print(success and "✅ Success" or "❌ Failed")
+    else
+        print("❌ Remote not found")
+    end
+    
+    -- Method 5: Try setting attribute directly
+    print("🔄 Method 5: Attempting to set attribute...")
+    local success = pcall(function()
+        raccoon:SetAttribute("MutationId", rainbowEnum)
+        raccoon:SetAttribute("Mutation", rainbowEnum)
+    end)
+    print(success and "✅ Success" or "❌ Failed")
+    
+    print("✅ All methods attempted! Check your raccoon to see if Rainbow mutation was applied.")
+    print("=" .. string.rep("=", 40))
+end
+
+-- Function to force any mutation
+function ForceMutation(mutationName)
+    local enumId = MutationToEnum[mutationName]
+    if not enumId then
+        print("❌ Invalid mutation name! Available mutations:")
+        for name, _ in pairs(MutationToEnum) do
+            print("  -", name)
+        end
+        return
+    end
+    
+    print("🎯 Forcing", mutationName, "mutation (enum:", enumId, ")...")
+    
+    local raccoon = GetRaccoon()
+    if not raccoon then
+        return
+    end
+    
+    -- Try all methods with error handling
+    local remote1 = GetRemoteEvent("GameEvents.PetMutationHandler")
+    local remote2 = GetRemoteEvent("GameEvents.PetMutationMachineService_RE")
+    
+    if remote1 then
+        pcall(function() remote1:FireServer(enumId) end)
+        pcall(function() remote1:FireServer(raccoon, enumId) end)
+    end
+    
+    if remote2 then
+        pcall(function() remote2:FireServer(enumId) end)
+        pcall(function() remote2:FireServer("start", enumId) end)
+    end
+    
+    print("✅ Attempted to force", mutationName, "mutation!")
+end
+
+-- Show available remotes for debugging
+function ShowRemotes()
+    print("🔍 Checking for remote events...")
+    
+    local success, replicatedStorage = pcall(function()
+        return game:GetService("ReplicatedStorage")
+    end)
+    
+    if not success then
+        print("❌ Cannot access ReplicatedStorage")
+        return
+    end
+    
+    local gameEvents = replicatedStorage:FindFirstChild("GameEvents")
+    if not gameEvents then
+        print("❌ GameEvents not found in ReplicatedStorage")
+        print("🔍 Available children in ReplicatedStorage:")
+        for i, child in pairs(replicatedStorage:GetChildren()) do
+            print("  -", child.Name, "(" .. child.ClassName .. ")")
+        end
+        return
+    end
+    
+    print("✅ GameEvents found! Available remotes:")
+    for i, child in pairs(gameEvents:GetChildren()) do
+        if child:IsA("RemoteEvent") then
+            print("  📡", child.Name)
+        else
+            print("  📁", child.Name, "(" .. child.ClassName .. ")")
+        end
+    end
+end
+
+-- Usage examples:
+print("=== PET MUTATION TOOLS (FIXED) ===")
+print("Commands:")
+print("CheckRaccoonMutation() - Check what mutation your raccoon will get")
+print("ForceRainbowMutation() - Force Rainbow mutation")
+print("ForceMutation('Ascended') - Force any specific mutation")
+print("ShowRemotes() - Show available remote events")
+print("")
+
+-- Auto-run the check with error handling
+print("🚀 Starting automatic check...")
+local success, error = pcall(CheckRaccoonMutation)
+if not success then
+    print("❌ ERROR in CheckRaccoonMutation:", error)
+end
+
+print("🔧 Checking remotes...")
+local success2, error2 = pcall(ShowRemotes)
+if not success2 then
+    print("❌ ERROR in ShowRemotes:", error2)
+end
