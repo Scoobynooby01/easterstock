@@ -1,0 +1,288 @@
+-- Pet Mutation Checker & Forcer (FIXED)
+-- For Roblox/Luau
+
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+-- Mutation enum mapping
+local MutationEnums = {
+    ['a'] = 'Shocked',
+    ['b'] = 'Golden', 
+    ['c'] = 'Rainbow',
+    ['d'] = 'Shiny',
+    ['e'] = 'Windy',
+    ['f'] = 'Frozen',
+    ['g'] = 'Inverted',
+    ['h'] = 'Rideable',
+    ['i'] = 'Mega',
+    ['j'] = 'Tiny',
+    ['k'] = 'IronSkin',
+    ['l'] = 'Radiant',
+    ['m'] = 'Normal',
+    ['n'] = 'Ascended'
+}
+
+-- Reverse mapping for forcing mutations
+local MutationToEnum = {}
+for enum, name in pairs(MutationEnums) do
+    MutationToEnum[name] = enum
+end
+
+-- Function to safely find the raccoon with multiple possible paths
+local function FindRaccoon()
+    local possiblePaths = {
+        "workspace.Interaction.UpdateItems.NewPetStand.PetMutationMachine.PetModelLocation.Raccoon",
+        "workspace.PetMutationMachine.PetModelLocation.Raccoon",
+        "workspace.MutationMachine.Raccoon",
+        "workspace.Pets.Raccoon"
+    }
+    
+    for _, path in ipairs(possiblePaths) do
+        local success, result = pcall(function()
+            local parts = string.split(path, ".")
+            local current = game
+            for i = 2, #parts do -- Skip 'game' part
+                current = current:FindFirstChild(parts[i])
+                if not current then return nil end
+            end
+            return current
+        end)
+        
+        if success and result then
+            print("🎯 Found raccoon at:", path)
+            return result
+        end
+    end
+    
+    -- If no predefined paths work, search more broadly
+    print("🔍 Searching for raccoon in workspace...")
+    local function searchForRaccoon(parent)
+        for _, child in ipairs(parent:GetChildren()) do
+            if child.Name:lower():find("raccoon") then
+                return child
+            end
+            local found = searchForRaccoon(child)
+            if found then return found end
+        end
+        return nil
+    end
+    
+    return searchForRaccoon(workspace)
+end
+
+-- Function to check what mutation your raccoon will get
+function CheckRaccoonMutation()
+    print("🔍 Checking raccoon mutation...")
+    
+    local raccoon = FindRaccoon()
+    if not raccoon then
+        print("❌ No raccoon found! Make sure you have a raccoon in the mutation machine.")
+        return
+    end
+    
+    print("✅ Raccoon found:", raccoon:GetFullName())
+    
+    -- Check all attributes for mutation data
+    local foundMutation = false
+    local attributes = raccoon:GetAttributes()
+    
+    if next(attributes) then
+        print("📋 Checking attributes...")
+        for attribute, value in pairs(attributes) do
+            print("  -", attribute, "=", tostring(value))
+            
+            -- Check if it's a mutation enum
+            if MutationEnums[tostring(value)] then
+                print("✅ MUTATION FOUND:", MutationEnums[tostring(value)])
+                foundMutation = true
+            end
+            
+            -- Check if attribute name suggests mutation
+            if string.lower(attribute):find("mutation") then
+                print("🎯 Mutation attribute found:", attribute, "=", tostring(value))
+                if MutationEnums[tostring(value)] then
+                    print("✅ MUTATION TYPE:", MutationEnums[tostring(value)])
+                end
+                foundMutation = true
+            end
+        end
+    else
+        print("📋 No attributes found on raccoon")
+    end
+    
+    if not foundMutation then
+        print("❓ No mutation data found in attributes. Checking children...")
+        
+        -- Check for StringValues or other objects that might hold mutation data
+        for _, descendant in ipairs(raccoon:GetDescendants()) do
+            if descendant:IsA("StringValue") or descendant:IsA("ObjectValue") or descendant:IsA("IntValue") then
+                print("📁", descendant.Name, "=", tostring(descendant.Value))
+                if MutationEnums[tostring(descendant.Value)] then
+                    print("✅ MUTATION FOUND:", MutationEnums[tostring(descendant.Value)])
+                    foundMutation = true
+                end
+            end
+        end
+    end
+    
+    if not foundMutation then
+        print("❓ No mutation data found. The raccoon might not have a mutation set yet.")
+    end
+end
+
+-- Function to safely fire remote events
+local function SafeFireRemote(remoteName, ...)
+    local success, err = pcall(function()
+        local remote = ReplicatedStorage:FindFirstChild("GameEvents")
+        if remote then
+            remote = remote:FindFirstChild(remoteName)
+            if remote and remote:IsA("RemoteEvent") then
+                remote:FireServer(...)
+                return true
+            end
+        end
+        return false
+    end)
+    
+    if not success then
+        print("⚠️  Failed to fire", remoteName, ":", err)
+        return false
+    end
+    return true
+end
+
+-- Function to force Rainbow mutation
+function ForceRainbowMutation()
+    print("🌈 Attempting to force Rainbow mutation...")
+    
+    local raccoon = FindRaccoon()
+    if not raccoon then
+        print("❌ No raccoon found!")
+        return
+    end
+    
+    local rainbowEnum = MutationToEnum['Rainbow'] -- 'c'
+    print("🎯 Using Rainbow enum:", rainbowEnum)
+    
+    -- Try different methods to force Rainbow mutation
+    local methods = {
+        function() return SafeFireRemote("PetMutationHandler", rainbowEnum) end,
+        function() return SafeFireRemote("PetMutationHandler", raccoon, rainbowEnum) end,
+        function() return SafeFireRemote("PetMutationMachineService_RE", rainbowEnum) end,
+        function() return SafeFireRemote("PetMutationMachineService_RE", "start", rainbowEnum) end,
+        function() return SafeFireRemote("PetMutationMachineService_RE", "mutate", rainbowEnum) end,
+        function() return SafeFireRemote("MutationService", rainbowEnum) end,
+        function() return SafeFireRemote("PetMutation", rainbowEnum) end,
+    }
+    
+    local successCount = 0
+    for i, method in ipairs(methods) do
+        print("🔄 Method", i, "...")
+        if method() then
+            successCount = successCount + 1
+        end
+    end
+    
+    -- Try setting attributes (might work if client-side changes are respected)
+    print("🔄 Setting attributes...")
+    pcall(function()
+        raccoon:SetAttribute("MutationId", rainbowEnum)
+        raccoon:SetAttribute("Mutation", rainbowEnum)
+        raccoon:SetAttribute("MutationType", rainbowEnum)
+    end)
+    
+    print("✅ Attempted", #methods, "methods,", successCount, "successful remote calls")
+    print("🔍 Check your raccoon now! Run CheckRaccoonMutation() to verify.")
+end
+
+-- Function to force any mutation
+function ForceMutation(mutationName)
+    local enumId = MutationToEnum[mutationName]
+    if not enumId then
+        print("❌ Invalid mutation name! Available mutations:")
+        for name, _ in pairs(MutationToEnum) do
+            print("  -", name)
+        end
+        return
+    end
+    
+    print("🎯 Forcing", mutationName, "mutation (enum:", enumId, ")...")
+    
+    local raccoon = FindRaccoon()
+    if not raccoon then
+        print("❌ No raccoon found!")
+        return
+    end
+    
+    -- Try all methods
+    local methods = {
+        function() return SafeFireRemote("PetMutationHandler", enumId) end,
+        function() return SafeFireRemote("PetMutationHandler", raccoon, enumId) end,
+        function() return SafeFireRemote("PetMutationMachineService_RE", enumId) end,
+        function() return SafeFireRemote("PetMutationMachineService_RE", "start", enumId) end,
+        function() return SafeFireRemote("PetMutationMachineService_RE", "mutate", enumId) end,
+        function() return SafeFireRemote("MutationService", enumId) end,
+        function() return SafeFireRemote("PetMutation", enumId) end,
+    }
+    
+    local successCount = 0
+    for i, method in ipairs(methods) do
+        if method() then
+            successCount = successCount + 1
+        end
+    end
+    
+    print("✅ Attempted to force", mutationName, "mutation!", successCount, "successful calls")
+end
+
+-- Function to list all available mutations
+function ListMutations()
+    print("📋 Available mutations:")
+    for name, enum in pairs(MutationToEnum) do
+        print("  -", name, "(enum:", enum, ")")
+    end
+end
+
+-- Function to monitor raccoon for changes
+function MonitorRaccoon()
+    print("👁️  Starting raccoon monitor...")
+    local raccoon = FindRaccoon()
+    if not raccoon then
+        print("❌ No raccoon found to monitor!")
+        return
+    end
+    
+    local lastAttributes = {}
+    
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        local currentAttributes = raccoon:GetAttributes()
+        for attr, value in pairs(currentAttributes) do
+            if lastAttributes[attr] ~= value then
+                print("🔄 Attribute changed:", attr, "=", tostring(value))
+                if MutationEnums[tostring(value)] then
+                    print("✅ NEW MUTATION:", MutationEnums[tostring(value)])
+                end
+                lastAttributes[attr] = value
+            end
+        end
+    end)
+    
+    print("✅ Monitor started! Press Ctrl+C to stop.")
+    return connection
+end
+
+-- Usage examples and auto-run
+print("=== PET MUTATION TOOLS (FIXED) ===")
+print("Commands:")
+print("CheckRaccoonMutation() - Check current mutation")
+print("ForceRainbowMutation() - Force Rainbow mutation")
+print("ForceMutation('Ascended') - Force specific mutation")
+print("ListMutations() - Show all available mutations")
+print("MonitorRaccoon() - Monitor raccoon for changes")
+print("")
+
+-- Auto-run the check
+CheckRaccoonMutation()
