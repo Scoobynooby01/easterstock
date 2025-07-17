@@ -1,0 +1,333 @@
+-- Pet Claim Mutation Rigger
+-- This script rigs the mutation chances and auto-claims with Ascended mutation
+
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+-- Mutation mappings
+local MutationEnums = {
+    ['a'] = 'Shocked',
+    ['b'] = 'Golden', 
+    ['c'] = 'Rainbow',
+    ['d'] = 'Shiny',
+    ['e'] = 'Windy',
+    ['f'] = 'Frozen',
+    ['g'] = 'Inverted',
+    ['h'] = 'Rideable',
+    ['i'] = 'Mega',
+    ['j'] = 'Tiny',
+    ['k'] = 'IronSkin',
+    ['l'] = 'Radiant',
+    ['m'] = 'Normal',
+    ['n'] = 'Ascended'
+}
+
+local MutationToEnum = {
+    ['Shocked'] = 'a',
+    ['Golden'] = 'b',
+    ['Rainbow'] = 'c',
+    ['Shiny'] = 'd',
+    ['Windy'] = 'e',
+    ['Frozen'] = 'f',
+    ['Inverted'] = 'g',
+    ['Rideable'] = 'h',
+    ['Mega'] = 'i',
+    ['Tiny'] = 'j',
+    ['IronSkin'] = 'k',
+    ['Radiant'] = 'l',
+    ['Normal'] = 'm',
+    ['Ascended'] = 'n'
+}
+
+-- Target mutation (change this to whatever you want)
+local TARGET_MUTATION = "Ascended"
+local TARGET_ENUM = MutationToEnum[TARGET_MUTATION]
+
+print("🎯 Target mutation:", TARGET_MUTATION, "(" .. TARGET_ENUM .. ")")
+
+-- Function to find remote events safely
+local function FindRemoteEvent(searchTerms)
+    local success, replicatedStorage = pcall(function()
+        return game:GetService("ReplicatedStorage")
+    end)
+    
+    if not success then return nil end
+    
+    local function searchInObject(obj, depth)
+        if depth > 3 then return nil end
+        
+        for _, child in pairs(obj:GetChildren()) do
+            if child:IsA("RemoteEvent") then
+                local name = string.lower(child.Name)
+                for _, term in pairs(searchTerms) do
+                    if string.find(name, string.lower(term)) then
+                        return child
+                    end
+                end
+            end
+            
+            local found = searchInObject(child, depth + 1)
+            if found then return found end
+        end
+        return nil
+    end
+    
+    return searchInObject(replicatedStorage, 0)
+end
+
+-- Function to hook into math.random to rig mutation chances
+local function HookRandomForMutation()
+    print("🎰 Hooking random number generation...")
+    
+    -- Store original math.random
+    local originalRandom = math.random
+    local originalRandomSeed = math.randomseed
+    
+    -- Override math.random to always return values that give us Ascended
+    math.random = function(min, max)
+        -- If it's asking for a random number that could be mutation-related
+        if min and max then
+            -- Common patterns for mutation selection
+            if max == 14 or max == 13 or (max >= 10 and max <= 20) then
+                print("🎲 Intercepted random call for mutation:", min, "-", max)
+                
+                -- Return position that corresponds to Ascended
+                -- Ascended is 'n' which is the 14th letter, so return 14 or adjust based on range
+                if min == 1 and max >= 14 then
+                    print("✅ Returning 14 for Ascended mutation!")
+                    return 14
+                elseif min == 0 and max >= 13 then
+                    print("✅ Returning 13 for Ascended mutation!")
+                    return 13
+                end
+            end
+        end
+        
+        -- For other random calls, use original function
+        return originalRandom(min, max)
+    end
+    
+    print("✅ Random function hooked!")
+end
+
+-- Function to hook into string/table operations that might select mutations
+local function HookMutationSelection()
+    print("🔗 Hooking mutation selection...")
+    
+    -- Override table selection if the game uses table.remove or similar
+    local originalTableRemove = table.remove
+    table.remove = function(t, pos)
+        -- Check if this looks like a mutation table
+        if type(t) == "table" and #t > 10 then
+            local hasLetters = false
+            for _, v in pairs(t) do
+                if type(v) == "string" and string.len(v) == 1 and string.match(v, "[a-n]") then
+                    hasLetters = true
+                    break
+                end
+            end
+            
+            if hasLetters then
+                print("🎯 Intercepted mutation table selection!")
+                print("✅ Forcing Ascended mutation:", TARGET_ENUM)
+                return TARGET_ENUM
+            end
+        end
+        
+        return originalTableRemove(t, pos)
+    end
+    
+    print("✅ Table operations hooked!")
+end
+
+-- Function to find and automatically claim pet
+local function FindAndClaimPet()
+    print("🔍 Searching for claimable pet...")
+    
+    -- Common paths for pet claiming
+    local claimPaths = {
+        "workspace.Interaction.UpdateItems.NewPetStand.PetMutationMachine",
+        "workspace.PetMutationMachine",
+        "workspace.Interaction.PetStand",
+        "workspace.PetStand"
+    }
+    
+    for _, path in pairs(claimPaths) do
+        local success, obj = pcall(function()
+            local parts = string.split(path, ".")
+            local current = game
+            for i = 2, #parts do
+                current = current:FindFirstChild(parts[i])
+                if not current then return nil end
+            end
+            return current
+        end)
+        
+        if success and obj then
+            print("✅ Found pet machine at:", path)
+            
+            -- Look for claim button or similar
+            local claimButton = obj:FindFirstChild("ClaimButton") or 
+                              obj:FindFirstChild("Claim") or
+                              obj:FindFirstChild("TakeButton") or
+                              obj:FindFirstChild("Take")
+            
+            if claimButton then
+                print("🎯 Found claim button:", claimButton.Name)
+                
+                -- Try to click it
+                local success = pcall(function()
+                    -- Different ways to trigger claim
+                    if claimButton:IsA("TextButton") or claimButton:IsA("ImageButton") then
+                        -- Fire the button event
+                        for _, connection in pairs(getconnections(claimButton.MouseButton1Click)) do
+                            connection:Fire()
+                        end
+                        for _, connection in pairs(getconnections(claimButton.Activated)) do
+                            connection:Fire()
+                        end
+                    end
+                end)
+                
+                if success then
+                    print("✅ Attempted to claim pet!")
+                    return true
+                end
+            end
+        end
+    end
+    
+    print("❌ Could not find claimable pet")
+    return false
+end
+
+-- Function to find claim remote events
+local function FindClaimRemotes()
+    print("🔍 Searching for claim remote events...")
+    
+    local claimRemotes = {
+        FindRemoteEvent({"claim", "pet"}),
+        FindRemoteEvent({"take", "pet"}),
+        FindRemoteEvent({"collect", "pet"}),
+        FindRemoteEvent({"mutation", "claim"}),
+        FindRemoteEvent({"pet", "machine"}),
+        FindRemoteEvent({"stand", "claim"})
+    }
+    
+    for i, remote in pairs(claimRemotes) do
+        if remote then
+            print("📡 Found claim remote:", remote.Name, "at", remote:GetFullName())
+            
+            -- Try different claim methods
+            local success = pcall(function()
+                remote:FireServer()
+                remote:FireServer("claim")
+                remote:FireServer("take")
+                remote:FireServer(TARGET_ENUM)
+                remote:FireServer("claim", TARGET_ENUM)
+            end)
+            
+            if success then
+                print("✅ Fired claim remote:", remote.Name)
+            end
+        end
+    end
+end
+
+-- Main function to rig and claim
+function RigAndClaim()
+    print("🚀 Starting mutation rigging and auto-claim...")
+    print("=" .. string.rep("=", 50))
+    
+    -- Hook the random functions
+    HookRandomForMutation()
+    HookMutationSelection()
+    
+    -- Try to find and claim pet
+    local claimed = FindAndClaimPet()
+    
+    -- Also try remote events
+    FindClaimRemotes()
+    
+    -- Wait a bit and check if we got the mutation
+    wait(2)
+    
+    print("🔍 Checking if we got the target mutation...")
+    
+    -- Try to find the claimed pet and check its mutation
+    local success, result = pcall(function()
+        -- Check player's pets or inventory
+        local player = Players.LocalPlayer
+        if player.Character then
+            for _, child in pairs(player.Character:GetChildren()) do
+                if child:IsA("Model") and string.find(string.lower(child.Name), "pet") then
+                    local attributes = child:GetAttributes()
+                    for attr, value in pairs(attributes) do
+                        if MutationEnums[tostring(value)] then
+                            print("🎯 Found pet with mutation:", MutationEnums[tostring(value)])
+                            if tostring(value) == TARGET_ENUM then
+                                print("🎉 SUCCESS! Got", TARGET_MUTATION, "mutation!")
+                                return true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return false
+    end)
+    
+    if success and result then
+        print("✅ Mission accomplished!")
+    else
+        print("❓ Could not verify mutation - check your pets manually")
+    end
+    
+    print("=" .. string.rep("=", 50))
+end
+
+-- Function to change target mutation
+function SetTargetMutation(mutationName)
+    if not MutationToEnum[mutationName] then
+        print("❌ Invalid mutation! Available options:")
+        for name, _ in pairs(MutationToEnum) do
+            print("  -", name)
+        end
+        return
+    end
+    
+    TARGET_MUTATION = mutationName
+    TARGET_ENUM = MutationToEnum[mutationName]
+    print("🎯 Target mutation changed to:", TARGET_MUTATION, "(" .. TARGET_ENUM .. ")")
+end
+
+-- Function to spam claim (if needed)
+function SpamClaim()
+    print("🔄 Spam claiming with rigged mutation...")
+    
+    HookRandomForMutation()
+    HookMutationSelection()
+    
+    for i = 1, 10 do
+        print("🔄 Attempt", i, "...")
+        FindAndClaimPet()
+        FindClaimRemotes()
+        wait(1)
+    end
+    
+    print("✅ Spam claiming complete!")
+end
+
+-- Usage instructions
+print("🎯 PET MUTATION RIGGER LOADED!")
+print("=" .. string.rep("=", 50))
+print("Commands:")
+print("RigAndClaim() - Rig chances and auto-claim pet")
+print("SetTargetMutation('Rainbow') - Change target mutation")
+print("SpamClaim() - Spam claim attempts with rigged chances")
+print("")
+print("Current target:", TARGET_MUTATION)
+print("Ready to rig! Run RigAndClaim() when you're at the pet machine!")
+print("=" .. string.rep("=", 50))
