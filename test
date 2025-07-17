@@ -1,0 +1,161 @@
+-- Pet Mutation Checker & Forcer
+-- Based on the mutation registry you provided
+
+-- Mutation enum mapping (from the decompiled code)
+local MutationEnums = {
+    ['a'] = 'Shocked',
+    ['b'] = 'Golden', 
+    ['c'] = 'Rainbow',
+    ['d'] = 'Shiny',
+    ['e'] = 'Windy',
+    ['f'] = 'Frozen',
+    ['g'] = 'Inverted',
+    ['h'] = 'Rideable',
+    ['i'] = 'Mega',
+    ['j'] = 'Tiny',
+    ['k'] = 'IronSkin',
+    ['l'] = 'Radiant',
+    ['m'] = 'Normal',
+    ['n'] = 'Ascended'
+}
+
+-- Reverse mapping for forcing mutations
+local MutationToEnum = {
+    ['Shocked'] = 'a',
+    ['Golden'] = 'b',
+    ['Rainbow'] = 'c',
+    ['Shiny'] = 'd',
+    ['Windy'] = 'e',
+    ['Frozen'] = 'f',
+    ['Inverted'] = 'g',
+    ['Rideable'] = 'h',
+    ['Mega'] = 'i',
+    ['Tiny'] = 'j',
+    ['IronSkin'] = 'k',
+    ['Radiant'] = 'l',
+    ['Normal'] = 'm',
+    ['Ascended'] = 'n'
+}
+
+-- Function to check what mutation your raccoon will get
+function CheckRaccoonMutation()
+    local raccoon = workspace.Interaction.UpdateItems.NewPetStand.PetMutationMachine.PetModelLocation.Raccoon
+    
+    if not raccoon then
+        print("❌ No raccoon found in mutation machine!")
+        return
+    end
+    
+    print("🔍 Checking raccoon mutation...")
+    
+    -- Check all attributes for mutation data
+    local foundMutation = false
+    for attribute, value in pairs(raccoon:GetAttributes()) do
+        print("📋 Attribute:", attribute, "=", value)
+        
+        -- Check if it's a mutation enum
+        if MutationEnums[tostring(value)] then
+            print("✅ MUTATION FOUND:", MutationEnums[tostring(value)])
+            foundMutation = true
+        end
+        
+        -- Check if attribute name suggests mutation
+        if attribute:lower():find("mutation") then
+            print("🎯 Mutation attribute found:", attribute, "=", value)
+            if MutationEnums[tostring(value)] then
+                print("✅ MUTATION TYPE:", MutationEnums[tostring(value)])
+            end
+            foundMutation = true
+        end
+    end
+    
+    if not foundMutation then
+        print("❓ No mutation data found in attributes. Checking children...")
+        
+        -- Check for StringValues or other objects that might hold mutation data
+        for i,v in pairs(raccoon:GetDescendants()) do
+            if v:IsA("StringValue") or v:IsA("ObjectValue") or v:IsA("IntValue") then
+                print("📁", v.Name, "=", v.Value)
+                if MutationEnums[tostring(v.Value)] then
+                    print("✅ MUTATION FOUND:", MutationEnums[tostring(v.Value)])
+                end
+            end
+        end
+    end
+end
+
+-- Function to force Rainbow mutation
+function ForceRainbowMutation()
+    print("🌈 Attempting to force Rainbow mutation...")
+    
+    local raccoon = workspace.Interaction.UpdateItems.NewPetStand.PetMutationMachine.PetModelLocation.Raccoon
+    if not raccoon then
+        print("❌ No raccoon found!")
+        return
+    end
+    
+    -- Try different methods to force Rainbow mutation (enum 'c')
+    local rainbowEnum = MutationToEnum['Rainbow'] -- 'c'
+    
+    -- Method 1: Direct RemoteEvent call
+    print("🔄 Method 1: Using PetMutationHandler...")
+    game:GetService("ReplicatedStorage").GameEvents.PetMutationHandler:FireServer(rainbowEnum)
+    
+    -- Method 2: With raccoon parameter
+    print("🔄 Method 2: Using PetMutationHandler with raccoon...")
+    game:GetService("ReplicatedStorage").GameEvents.PetMutationHandler:FireServer(raccoon, rainbowEnum)
+    
+    -- Method 3: Using machine service
+    print("🔄 Method 3: Using PetMutationMachineService_RE...")
+    game:GetService("ReplicatedStorage").GameEvents.PetMutationMachineService_RE:FireServer(rainbowEnum)
+    
+    -- Method 4: With start parameter
+    print("🔄 Method 4: Using machine service with parameters...")
+    game:GetService("ReplicatedStorage").GameEvents.PetMutationMachineService_RE:FireServer("start", rainbowEnum)
+    
+    -- Method 5: Try setting attribute directly (might not work server-side)
+    print("🔄 Method 5: Attempting to set attribute...")
+    raccoon:SetAttribute("MutationId", rainbowEnum)
+    raccoon:SetAttribute("Mutation", rainbowEnum)
+    
+    print("✅ All methods attempted! Check your raccoon to see if Rainbow mutation was applied.")
+end
+
+-- Function to force any mutation
+function ForceMutation(mutationName)
+    local enumId = MutationToEnum[mutationName]
+    if not enumId then
+        print("❌ Invalid mutation name! Available mutations:")
+        for name, _ in pairs(MutationToEnum) do
+            print("  -", name)
+        end
+        return
+    end
+    
+    print("🎯 Forcing", mutationName, "mutation (enum:", enumId, ")...")
+    
+    local raccoon = workspace.Interaction.UpdateItems.NewPetStand.PetMutationMachine.PetModelLocation.Raccoon
+    if not raccoon then
+        print("❌ No raccoon found!")
+        return
+    end
+    
+    -- Try all methods
+    game:GetService("ReplicatedStorage").GameEvents.PetMutationHandler:FireServer(enumId)
+    game:GetService("ReplicatedStorage").GameEvents.PetMutationHandler:FireServer(raccoon, enumId)
+    game:GetService("ReplicatedStorage").GameEvents.PetMutationMachineService_RE:FireServer(enumId)
+    game:GetService("ReplicatedStorage").GameEvents.PetMutationMachineService_RE:FireServer("start", enumId)
+    
+    print("✅ Attempted to force", mutationName, "mutation!")
+end
+
+-- Usage examples:
+print("=== PET MUTATION TOOLS ===")
+print("Commands:")
+print("CheckRaccoonMutation() - Check what mutation your raccoon will get")
+print("ForceRainbowMutation() - Force Rainbow mutation")
+print("ForceMutation('Ascended') - Force any specific mutation")
+print("")
+
+-- Auto-run the check
+CheckRaccoonMutation()
